@@ -1,0 +1,13 @@
+[project]
+name = "fuzzy-geom-id"
+version = "0.1.0"
+description = "Create fuzzy IDs for (multi)polygons."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.1.8",
+    "geopandas>=1.0.1",
+    "pyproj>=3.7.1",
+    "pyquadkey2>=0.3.2",
+    "tqdm>=4.67.1",
+]
