@@ -30,6 +30,25 @@ def save_quadkey_tile_polygon(qk: QuadKey, filename=None):
     gpd.GeoDataFrame(geometry=[polygon]).to_file(file_path, driver="GeoJSON")
 
 
+def gen_bbox(nw_corner, se_corner) -> Polygon:
+        # NW corner of the tile-made bbox
+        proposed_maxy, proposed_minx = nw_corner.to_geo(anchor=TileAnchor.ANCHOR_NW)
+
+
+        # SE corner of the tile-made bbox
+        proposed_miny, proposed_maxx = se_corner.to_geo(anchor=TileAnchor.ANCHOR_SE)
+
+        return Polygon(
+            [
+                Point(proposed_minx, proposed_maxy),
+                Point(proposed_maxx, proposed_maxy),
+                Point(proposed_maxx, proposed_miny),
+                Point(proposed_minx, proposed_miny),
+                Point(proposed_minx, proposed_maxy),
+            ]
+        )
+
+
 def gen_shape_id(
     feature: MultiPolygon, debug_folder: Optional[Path] = None
 ) -> Optional[str]:
@@ -53,8 +72,6 @@ def gen_shape_id(
         return None
 
     while True:
-        # This would be the NW corner of the tile-made bbox
-        proposed_maxy, proposed_minx = nw_corner.to_geo(anchor=TileAnchor.ANCHOR_NW)
 
         max_grid_size = GRID_SIZE
         while True:
@@ -78,23 +95,11 @@ def gen_shape_id(
                 se_corner, debug_folder / "quadkey_se_corner.geojson"
             )
 
-        # This would be the SE corner of the tile-made bbox
-        proposed_miny, proposed_maxx = se_corner.to_geo(anchor=TileAnchor.ANCHOR_SE)
-
-
         # if the proposed bbox does not include the original geometry,
         # we decrement the grid size
         #
         # First, we need to make a Shapely Polygon from the proposed bbox
-        proposed_bbox = Polygon(
-            [
-                Point(proposed_minx, proposed_maxy),
-                Point(proposed_maxx, proposed_maxy),
-                Point(proposed_maxx, proposed_miny),
-                Point(proposed_minx, proposed_miny),
-                Point(proposed_minx, proposed_maxy),
-            ]
-        )
+        proposed_bbox = gen_bbox(nw_corner, se_corner)
 
         # save proposed_bbox to geojson file
         if debug_folder:
@@ -107,7 +112,6 @@ def gen_shape_id(
         # break if we literally have the global tile
         if nw_corner.key == "0":
             break
-
 
         # Check if the proposed bbox includes the original geometry
         if not proposed_bbox.contains(feature):
