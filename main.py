@@ -113,17 +113,17 @@ def gen_shape_id(
         if nw_corner.key == "0":
             break
 
-        # Check if the proposed bbox includes the original geometry
-        if not proposed_bbox.contains(feature):
+        # If the proposed bbox does not include the proposed geometry,
+        # we need to iterate again with bigger tiles
+        if proposed_bbox.contains(feature):
+            break
+        else:
             nw_corner = nw_corner.parent()
-            print(nw_corner)
             if debug_folder:
                 print(
                     f"Proposed bbox does not include original geometry, setting new level to {nw_corner.level}"
                 )
             continue
-
-        break
 
     all_quadkeys = nw_corner.difference(se_corner)
     if debug_folder:
