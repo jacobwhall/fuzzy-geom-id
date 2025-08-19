@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
 [project]
 name = "fuzzy-geom-id"
 version = "0.1.0"
@@ -9,5 +13,6 @@ dependencies = [
     "geopandas>=1.0.1",
     "pyproj>=3.7.1",
     "pyquadkey2>=0.3.2",
+    "shapely>=2.0.7",
     "tqdm>=4.67.1",
 ]
