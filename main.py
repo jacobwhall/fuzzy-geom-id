@@ -10,7 +10,7 @@ from shapely import MultiPolygon, Point, Polygon, to_geojson
 from tqdm import tqdm
 
 GRID_SIZE = 12
-DEBUG = True
+DEBUG = False
 
 def quadkey_to_polygon(qk: QuadKey) -> Polygon:
     corners: List[Point] = []
@@ -50,8 +50,16 @@ def gen_bbox(nw_corner, se_corner) -> Polygon:
 
 
 def gen_shape_id(
-    feature: MultiPolygon, debug_folder: Optional[Path] = None
+    feature: Polygon | MultiPolygon, debug_folder: Optional[Path] = None
 ) -> Optional[str]:
+
+    # TODO: do validity check on input geometry?
+
+    if isinstance(feature, Polygon):
+        feature = MultiPolygon([feature])
+    elif not isinstance(feature, MultiPolygon):
+        raise ValueError("Shape IDs can only be calculated for Polygons and MultiPolygons.")
+
     non_total_count = 0
 
     minx, miny, maxx, maxy = feature.bounds
@@ -67,9 +75,7 @@ def gen_shape_id(
     try:
         nw_corner = QuadKey.from_geo((maxy, minx), 20)
     except ValueError:
-        print("Encountered error, skipping...")
-        breakpoint()
-        return None
+        raise RuntimeError("Unable to find tile at level 20 for NW corner of input geometry.")
 
     while True:
 
@@ -125,6 +131,8 @@ def gen_shape_id(
                 )
             continue
 
+    # This function returns all of the quadkeys in the rectangle
+    # formed between two given keys
     all_quadkeys = nw_corner.difference(se_corner)
     if debug_folder:
         print(f"Number of quadkeys: {len(all_quadkeys)}")
@@ -133,13 +141,14 @@ def gen_shape_id(
     overlaps: List[bool] = []
     overlap_percent: List[float] = []
 
+    # For each quadkey, determine how much it overlaps our feature
     for qk in all_quadkeys:
         polygon = quadkey_to_polygon(qk)
         polygons.append(polygon)
         overlaps.append(polygon.intersects(feature))
         overlap_percent.append(polygon.intersection(feature).area / polygon.area)
 
-    # Set non_total_count to the number of overlaps that are not total
+    # For debugging: calculate non_total_count to the number of overlaps that are not total
     non_total_count = sum([p < 1.0 for p in overlap_percent])
     if debug_folder:
         print(overlap_percent)
@@ -159,7 +168,7 @@ def gen_shape_id(
     if debug_folder:
         gdf.to_file("output.geojson", driver="GeoJSON")
 
-    # Version ID
+    # ID version ID
     id = "001"
 
     # Add the number of geometries within the MultiPolygon to the ID
@@ -172,8 +181,6 @@ def gen_shape_id(
 
     # GRID_SIZE x GRID_SIZE overlaps y/n
     id += "".join(["1" if o else "0" for o in overlaps])
-
-    breakpoint()
 
     return id
 
@@ -220,11 +227,14 @@ def main(filepath: Path):
         if this_shape_id:
             shape_ids.add(this_shape_id)
         else:
+            print("Found a bad shape!")
             save_bad_shape(shape)
 
     print(f"Number of input shapes: {len(shapes)}")
     print(f"Number of IDs: {len(shape_ids)}")
     print(f"Example ID: {shape_ids.pop()}")
+
+    breakpoint()
 
 
 if __name__ == "__main__":
